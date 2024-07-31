@@ -1,0 +1,38 @@
+
+
+# API URL
+http://127.0.0.1:1337/api/v1/createuser/
+
+# ADMIN URL
+http://127.0.0.1:1337/admin/
+
+
+# start docker
+
+# собрать проект - это нужно сделать 1 раз
+docker-compose -f docker-compose.prod.yml build
+
+# запуск проекта
+docker-compose -f docker-compose.prod.yml up
+
+
+# одноразовая настройка
+
+# заходим в контейнер (открываем новый терминал)
+docker container exec -it backend /bin/bash
+
+# создаем миграции в базе данных
+python manage.py makemigrations
+
+# применяем миграции (фиксируем изменения в базе)
+python manage.py migrate
+
+# создаем пользователя
+python manage.py createsuperuser
+
+вводим данные (пользователь для управления с админки)
+
+# выходим с контейнера
+exit
+
+этот терминал можно закрыть, все готово

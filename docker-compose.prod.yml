@@ -1,0 +1,104 @@
+version: '3.9'
+
+services:
+  postgres:
+    restart: always
+    container_name: postgres_db
+    image: postgres:16
+    env_file:
+      - .env
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - data_base_volume:/var/lib/postgresql/data
+      - ./backend/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - tor_network
+
+  django:
+    restart: always
+    container_name: backend
+    build:
+      context: ./backend/app
+      dockerfile: Dockerfile
+#    command: gunicorn facebook_drf.wsgi:application --bind 0.0.0.0:8000 --workers 2
+    command: python manage.py runserver 0.0.0.0:8000
+    expose:
+      - 8000
+    volumes:
+      - app_volume:/home/app
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: 5432
+      http_proxy: socks5h://tor:9050
+      https_proxy: socks5h://tor:9050
+    networks:
+      - tor_network
+
+  nginx:
+    restart: always
+    container_name: nginx_fb
+    build: ./backend/nginx
+    ports:
+      - "1337:80"
+    depends_on:
+      - django
+    volumes:
+      - static_files_volume:/home/app/static
+      - media_files_volume:/home/app/mediafiles
+    networks:
+      - tor_network
+
+  tor:
+    restart: always
+    container_name: tor_fb
+    build: ./backend/tor
+    ports:
+      - "9050:9050"
+    networks:
+      - tor_network
+
+
+networks:
+  tor_network:
+    driver: bridge
+
+volumes:
+  static_files_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./backend/app/static
+      o: bind
+
+  media_files_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./backend/app/mediafiles
+      o: bind
+
+  data_base_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./backend/postgres/database
+      o: bind
+
+  app_volume:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./backend/app
+      o: bind
